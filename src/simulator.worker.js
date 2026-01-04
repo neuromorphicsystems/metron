@@ -138,7 +138,7 @@ function next(hotloopStart) {
     for (const synapse of synapses) {
         // current decay
         if (synapse.muAndAlpha != null && synapse.current > 0) {
-            synapse.current *= muAndAlpha[0];
+            synapse.current *= synapse.muAndAlpha[0];
         }
         // remove spikes that have arrived and:
         // - update the current for a 2nd order neuron
@@ -219,7 +219,6 @@ function next(hotloopStart) {
                 spikeSource.spikesTimeAndChannelIndex
                 ][1]
                 ];
-            console.log("SPIKE"); // @DEV
             for (const synapse of channel.postSynapses) {
                 synapse.spikes.push(0);
             }

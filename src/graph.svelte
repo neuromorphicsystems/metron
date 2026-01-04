@@ -953,7 +953,7 @@ onMount(() => {
                     y,
                     [false, 0],
                     true,
-                    "0:60 1:120 2:180\n",
+                    "0:20 1:40 2:60\n",
                     new Array(3).fill(null).map(() => [DEFAULT_INSTRUMENT, synth.nextNote(), DEFAULT_CHORD_DURATION]),
                 );
                 selection = network.spikeSources[network.spikeSources.length - 1];

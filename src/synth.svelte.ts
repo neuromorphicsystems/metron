@@ -25,25 +25,27 @@ export const DEFAULT_CHORD_DURATION: number = 0.3;
 export class Synth {
     enabled: boolean = $state.raw(false);
     started: boolean;
+    compressor: tone.Compressor;
     instruments: Map<string, tone.Sampler | tone.PolySynth>;
     nextNoteIndex: number;
 
     constructor() {
         this.enabled = false;
         this.started = false;
+        this.compressor = new tone.Compressor(-30, 2).toDestination();
         this.instruments = new Map();
-        // @TODO add a compressor to each instrument to avoid saturation
         this.instruments.set(DEFAULT_INSTRUMENT, new tone.PolySynth());
         process.env.INSTRUMENTS;
+        for (const instrument of this.instruments.values()) {
+            instrument.connect(this.compressor);
+        }
         this.nextNoteIndex = 36; // A3
     }
 
     toggle() {
         if (this.enabled) {
             this.enabled = false;
-            for (const instrument of this.instruments.values()) {
-                instrument.disconnect();
-            }
+            this.compressor.disconnect();
         } else {
             if (!this.started) {
                 this.started = true;
@@ -52,17 +54,12 @@ export class Synth {
                 })();
             }
             this.enabled = true;
-            for (const instrument of this.instruments.values()) {
-                instrument.toDestination();
-            }
+            this.compressor.toDestination();
         }
     }
 
     trigger(instrumentName: string, notes: string[], duration: number) {
-        console.log(
-            `enabled=${this.enabled}, ${instrumentName}, ${notes}, ${duration}`,
-        ); // @DEV
-        if (this.enabled) {
+        if (this.enabled && instrumentName !== "none") {
             const instrument = this.instruments.get(instrumentName);
             if (instrument == null) {
                 throw new Error(`unsupport instrument "${instrument}"`);

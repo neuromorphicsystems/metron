@@ -95,15 +95,13 @@ const tooltip: [(element: HTMLElement, message: string) => void, () => void] = [
                     }} onmouseleave={() => {
                         hideTooltip();
                     }} role={null}>Instrument</div>
-                    <div class="fields">
+                    <div class="fields with-space">
                         <Dropdown width={100} options={synth.dropdownOptions()} bind:value={selection.instrument}></Dropdown>
-                        <NoteInput content={selection.noteInputContent} onchange={notes => {
+                        <NoteInput bind:content={selection.noteInputContent} onchange={notes => {
                             (selection as Neuron).notes = notes;
                         }}></NoteInput>
                     </div>
-                    <NumberInput title="<mi>&#x3D1;</mi>" mathTitle={true} help="<strong>Membrane potential threshold</strong>&mdash;<em>positive float or zero</em><br>A zero threshold creates a neuron that spikes at every tick" integer={false} minimum={0} bind:value={selection.threshold} {tooltip} onchange={() => {
-                            (selection as Neuron).parent.dispatch(SubscriptionType.Parameters);
-                        }}></NumberInput>
+                    <NumberInput title="Duration" mathTitle={false} help="<strong>Chord duration in seconds</strong>&mdash;<em>positive float or zero</em><br>The chord duration of sampled instruments (anything but Synth) is limited by the samples' duration" integer={false} minimum={0} bind:value={selection.chordDuration} {tooltip}></NumberInput>
                 </div>
                 <button class="delete-selection" aria-label="Delete" onclick={() => {
                     const neuron = selection as Neuron;
@@ -132,8 +130,8 @@ const tooltip: [(element: HTMLElement, message: string) => void, () => void] = [
                                 let instrument = "synth";
                                 let chordDuration = 5.0;
                                 if (spikeSource.channels.length > 0) {
-                                    instrument = spikeSource.channels[spikeSource.channels.length].instrument;
-                                    chordDuration = spikeSource.channels[spikeSource.channels.length].chordDuration;
+                                    instrument = spikeSource.channels[spikeSource.channels.length - 1].instrument;
+                                    chordDuration = spikeSource.channels[spikeSource.channels.length - 1].chordDuration;
                                 }
                                 spikeSource.addChannels(
                                     new Array(value - spikeSource.channels.length)
@@ -263,6 +261,26 @@ const tooltip: [(element: HTMLElement, message: string) => void, () => void] = [
                             </div>
                         </div>
                         {#if selection.type === "source"}
+                            <div class="title with-space" onmouseenter={event => {
+                                showTooltip(event.target as HTMLElement, "<strong>Instrument and note(s) for the neuron</strong>&mdash;<em>note1 note2...</em><br>The note(s) use the scientific pitch notation and are played when the neuron spikes");
+                            }} onmouseleave={() => {
+                                hideTooltip();
+                            }} role={null}>Instrument</div>
+                            <div class="fields with-space">
+                                <Dropdown width={100} options={synth.dropdownOptions()} bind:value={(channel as SpikeSourceChannel).instrument}></Dropdown>
+                                <NoteInput bind:content={(channel as SpikeSourceChannel).noteInputContent} onchange={notes => {
+                                    (selection as Neuron).notes = notes;
+                                }}></NoteInput>
+                            </div>
+                            <NumberInput
+                                title="Duration"
+                                mathTitle={false}
+                                help="<strong>Chord duration in seconds</strong>&mdash;<em>positive float or zero</em><br>The chord duration of sampled instruments (anything but Synth) is limited by the samples' duration"
+                                integer={false}
+                                minimum={0}
+                                bind:value={(channel as SpikeSourceChannel).chordDuration}
+                                {tooltip}
+                            ></NumberInput>
                             <SynapseList synapses={(channel as SpikeSourceChannel).postSynapses} end="post" bind:selection {tooltip}></SynapseList>
                         {:else}
                             <SynapseList synapses={(channel as SpikeSinkChannel).preSynapses} end="post" bind:selection {tooltip}></SynapseList>
@@ -351,6 +369,10 @@ const tooltip: [(element: HTMLElement, message: string) => void, () => void] = [
         display: flex;
         align-items: center;
         gap: 10px;
+    }
+
+    .fields.with-space {
+        padding-bottom: 5px;
     }
 
     .spike-input-fields {
