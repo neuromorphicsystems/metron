@@ -1,0 +1,29 @@
+{
+    "name": "metron",
+    "version": "1.0.0",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "build": "rsbuild build",
+        "dev": "rsbuild dev --open",
+        "preview": "rsbuild preview",
+        "format": "biome format --write package.json biome.json rsbuild.config.ts tsconfig.json src",
+        "lint": "svelte-check --tsconfig ./tsconfig.json; biome lint src/*.{svelte,ts,html}"
+    },
+    "dependencies": {
+        "d3": "7.9.0",
+        "d3-force": "3.0.0",
+        "svelte": "5.43.14"
+    },
+    "devDependencies": {
+        "@biomejs/biome": "2.3.7",
+        "@rsbuild/core": "1.6.7",
+        "@rsbuild/plugin-svelte": "1.0.11",
+        "@types/d3": "7.4.3",
+        "svelte-check": "4.3.4",
+        "tone": "15.1.22",
+        "ts-loader": "9.5.4",
+        "typescript": "5.9.3",
+        "worker-rspack-loader": "3.1.2"
+    }
+}

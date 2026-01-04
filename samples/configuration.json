@@ -1,0 +1,10 @@
+{
+    "guitar": {
+        "reference": "A3",
+        "intervalSemitones": 3
+    },
+    "piano": {
+        "reference": "A3",
+        "intervalSemitones": 3
+    }
+}
