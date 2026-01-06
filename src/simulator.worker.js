@@ -183,7 +183,7 @@ function next(hotloopStart) {
             synapse.current > 0 &&
             synapse.post.type === TYPE_NEURON
         ) {
-            synapse.post.potential = Math.max(0.0, synapse.post.potential + synapse.current);
+            synapse.post.potential = Math.max(0.0, synapse.post.potential + synapse.current * synapse.weight);
         }
     }
 
