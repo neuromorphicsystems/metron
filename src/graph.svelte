@@ -344,7 +344,7 @@ class NetworkSelection {
                     .attr("cx", 0)
                     .attr("cy", 0)
                     .attr("r", NEURON_RADIUS)
-                    .attr("fill", "#586e75");
+                    .attr("fill", "#586E75");
                 nodeGroup
                     .append("circle")
                     .attr("class", "stroke")
@@ -611,7 +611,8 @@ class NetworkSelection {
             .data(spikes)
             .join("circle")
             .attr("r", SPIKE_RADIUS)
-            .attr("fill", "#586e75");
+            .attr("stroke", "#586E75")
+            .attr("stroke-width", 2);
     }
 
     unmount() {
@@ -657,7 +658,7 @@ class DrawContext {
             .attr("markerHeight", 4)
             .append("path")
             .attr("d", "M0,-4 L8,0 L0,4 Z")
-            .attr("fill", "#586e75");
+            .attr("fill", "#586E75");
         defs.append("marker")
             .attr("id", "arrow-head-no-offset")
             .attr("viewBox", "0 -4 8 8")
@@ -668,7 +669,7 @@ class DrawContext {
             .attr("markerHeight", 4)
             .append("path")
             .attr("d", "M0,-4 L8,0 L0,4 Z")
-            .attr("fill", "#586e75");
+            .attr("fill", "#586E75");
         defs.append("clipPath")
             .attr("id", "neuron-clip-path")
             .append("rect")
@@ -702,7 +703,7 @@ class DrawContext {
         this.newSynapseLine = this.graphContainer
             .append("line")
             .attr("display", "none")
-            .attr("stroke", "#586e75")
+            .attr("stroke", "#586E75")
             .attr("stroke-width", 2)
             .attr("marker-end", "url(#arrow-head-no-offset)");
         this.nodesContainer = this.graphContainer
@@ -754,7 +755,7 @@ class DrawContext {
             .attr("r", node => node.glowRadius)
             .attr("opacity", node => node.glowOpacity);
         this.networkSelection.linkLine
-            .attr("stroke", "#586e75")
+            .attr("stroke", "#586E75")
             .attr("stroke-width", 2)
             .attr("x1", link => link.source.x)
             .attr("y1", link => link.source.y)
@@ -780,10 +781,12 @@ class DrawContext {
                     y1 * (spike.position + correction) +
                     y0 * (1.0 - spike.position - correction);
             }
+            spike.fill = spike.synapse.weight >= 0.0 ? "#586E75" : "#FDF6E3";
         }
         this.networkSelection.spikeCircle
             .attr("cx", spike => spike.x)
-            .attr("cy", spike => spike.y);
+            .attr("cy", spike => spike.y)
+            .attr("fill", spike => spike.fill);
         for (const node of this.networkSelection.nodeCircle.data()) {
             node.stroke = nodeStroke(node, tool, this.newSynapsePre, selection);
         }

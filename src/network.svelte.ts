@@ -20,12 +20,14 @@ export type SynapsePostDisplay = NeuronDisplay | SpikeSinkChannelDisplay;
 
 export interface SpikeDisplay {
     position: number;
+    synapse: Synapse;
     pre: SynapsePreDisplay;
     post: SynapsePostDisplay;
 
     // cache
     x: number;
     y: number;
+    fill: string;
 }
 
 export const NEURON_RADIUS: number = 20;
@@ -1654,10 +1656,12 @@ export class Network {
             for (const spike of synapse.display.spikes) {
                 displays.push({
                     position: spike,
+                    synapse,
                     pre: synapse.pre.display,
                     post: synapse.post.display,
                     x: 0.0,
                     y: 0.0,
+                    fill: "none",
                 });
             }
         }
