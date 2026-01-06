@@ -62,7 +62,7 @@ const spikeSinks = [];
 // }[]
 const synapses = [];
 
-function bisectLeft(spikesTimeAndChannel, time) {
+function bisectLeft(spikesTimeAndChannel, time, periodic) {
     let left = 0;
     let right = spikesTimeAndChannel.length;
     while (left < right) {
@@ -72,6 +72,9 @@ function bisectLeft(spikesTimeAndChannel, time) {
         } else {
             right = index;
         }
+    }
+    if (periodic && left === spikesTimeAndChannel.length) {
+        return 0;
     }
     return left;
 }
@@ -427,6 +430,7 @@ self.onmessage = event => {
                     spikesTimeAndChannelIndex: bisectLeft(
                         spikeSource[2],
                         spikeSource[3] == null ? tick : tick % spikeSource[3],
+                        spikeSource[3] != null,
                     ),
                     period: spikeSource[3],
                 }),
@@ -450,6 +454,7 @@ self.onmessage = event => {
                     currentSpikeSource.spikesTimeAndChannelIndex = bisectLeft(
                         newSpikeSource[2],
                         newSpikeSource[3] == null ? tick : tick % newSpikeSource[3],
+                        newSpikeSource[3] != null,
                     );
                     currentSpikeSource.period = newSpikeSource[3];
                 },
