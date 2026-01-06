@@ -14,6 +14,7 @@ export default defineConfig({
         dataUriLimit: {
             font: Number.MAX_SAFE_INTEGER,
             media: Number.MAX_SAFE_INTEGER,
+            assets: Number.MAX_SAFE_INTEGER,
         },
         inlineScripts: true,
         inlineStyles: true,

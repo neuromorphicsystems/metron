@@ -2,6 +2,7 @@
 import { onMount } from "svelte";
 
 import Detail from "./detail.svelte";
+import Filesystem from "./filesystem.svelte";
 import Graph from "./graph.svelte";
 import type { Neuron, SpikeSink, SpikeSource } from "./network.svelte.ts";
 import { Network, SubscriptionType } from "./network.svelte.ts";
@@ -45,8 +46,9 @@ simulator.onmessage = (event: MessageEvent<FromSimulator>) => {
 function simulatorPost(message: ToSimulator) {
     simulator.postMessage(message);
 }
+let newtworkSubscription: (() => void) | null = null;
 onMount(() => {
-    return network.subscribe(
+    newtworkSubscription = network.subscribe(
         SubscriptionType.Topology | SubscriptionType.Parameters,
         network => {
             simulatorPost({
@@ -55,34 +57,12 @@ onMount(() => {
             });
         },
     );
+    return () => {
+        if (newtworkSubscription != null) {
+            newtworkSubscription();
+        }
+    };
 });
-
-/*
-onMount(() => {
-    network.addNeuron(0.0, 0.0, 60.0, 1.0, false, "piano", "A3", 15.0, true);
-    for (let index = 0; index < 20; ++index) {
-        network.addNeuron(
-            index * 20,
-            0.0,
-            60.0,
-            1.0,
-            false,
-            "piano",
-            "A3",
-            15.0,
-            true,
-        );
-        network.addSynapse(
-            network.neurons[0],
-            network.neurons[network.neurons.length - 1],
-            60,
-            0.5,
-            0.0,
-            true,
-        );
-    }
-});
-*/
 </script>
 
 <svelte:window onkeydown={event => {
@@ -101,42 +81,71 @@ onMount(() => {
 }}></svelte:window>
 
 <main>
-    <Detail bind:selection></Detail>
-    <div class="graph-wrapper">
-        <Toolbar bind:tool></Toolbar>
-        <Graph {tool} {network} bind:selection></Graph>
-        <Playbar
-            {playing}
-            tickRate={tickRate}
-            tick={tick}
-            onplay={() => {
-                simulatorPost({
-                    type: "play",
-                });
-            }}
-            onpause={() => {
+    {#key network}
+        <div class="left">
+            <Filesystem {network} onChange={newNetwork => {
+                if (newtworkSubscription != null) {
+                    newtworkSubscription();
+                }
+                network = newNetwork;
                 simulatorPost({
                     type: "pause",
                 });
-            }}
-            onnext={() => {
-                simulatorPost({
-                    type: "next",
-                });
-            }}
-            onreset={() => {
                 simulatorPost({
                     type: "reset",
                 });
-            }}
-            ontickratechange={tickRate => {
                 simulatorPost({
-                    type: "tickRate",
-                    value: tickRate,
+                    type: "network",
+                    data: network.simulatorData(),
                 });
-            }}
-        ></Playbar>
-    </div>
+                newtworkSubscription = network.subscribe(
+                    SubscriptionType.Topology | SubscriptionType.Parameters,
+                    network => {
+                        simulatorPost({
+                            type: "network",
+                            data: network.simulatorData(),
+                        });
+                    },
+                );
+            }}></Filesystem>
+            <Detail bind:selection></Detail>
+        </div>
+        <div class="graph-wrapper">
+            <Toolbar bind:tool></Toolbar>
+            <Graph {tool} {network} bind:selection></Graph>
+            <Playbar
+                {playing}
+                tickRate={tickRate}
+                tick={tick}
+                onplay={() => {
+                    simulatorPost({
+                        type: "play",
+                    });
+                }}
+                onpause={() => {
+                    simulatorPost({
+                        type: "pause",
+                    });
+                }}
+                onnext={() => {
+                    simulatorPost({
+                        type: "next",
+                    });
+                }}
+                onreset={() => {
+                    simulatorPost({
+                        type: "reset",
+                    });
+                }}
+                ontickratechange={tickRate => {
+                    simulatorPost({
+                        type: "tickRate",
+                        value: tickRate,
+                    });
+                }}
+            ></Playbar>
+        </div>
+    {/key}
 </main>
 
 <style>
@@ -165,6 +174,18 @@ onMount(() => {
         overflow: hidden;
         display: flex;
         align-items: stretch;
+    }
+
+    .left {
+        display: flex;
+        flex-direction: column;
+        width: 300px;
+        flex-shrink: 0;
+        flex-grow: 0;
+        height: 100vh;
+        border-right: 1px solid var(--base0);
+        background: var(--base2);
+        overflow: hidden;
     }
 
     .graph-wrapper {

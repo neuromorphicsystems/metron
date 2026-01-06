@@ -20,6 +20,9 @@
                     "correctness": {
                         "noUnusedVariables": "off",
                         "noUnusedImports": "off"
+                    },
+                    "suspicious": {
+                        "noExplicitAny": "off"
                     }
                 }
             }

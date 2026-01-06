@@ -297,11 +297,6 @@ const tooltip: [(element: HTMLElement, message: string) => void, () => void] = [
 
 <style>
     .detail {
-        width: 300px;
-        flex-grow: 0;
-        flex-shrink: 0;
-        border-right: 1px solid var(--base0);
-        background: var(--base2);
         overflow-y: auto;
     }
 
@@ -426,6 +421,7 @@ const tooltip: [(element: HTMLElement, message: string) => void, () => void] = [
         background-color: var(--base2);
         color: var(--base03);
         box-shadow: 0px 0px 3px 0px var(--base03);
+        z-index: 10;
     }
 
     :global(.detail-tooltip.show) {

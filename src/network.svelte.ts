@@ -507,7 +507,6 @@ export class SpikeSource {
     style: ContainerStyle = $state.raw("vertical");
     spikeInputContent: string = $state.raw("");
     period: [boolean, number] = $state.raw([false, 0]);
-    instrument: string = $state.raw("None");
     spikesTimeAndChannel: [number, number][] = [];
     display: SpikeSourceDisplay;
 
@@ -526,7 +525,6 @@ export class SpikeSource {
         this.style = style;
         this.spikeInputContent = spikeInputContent;
         this.period = period;
-        this.instrument = "None";
         this.spikesTimeAndChannel = parseSpikeInput(
             this.spikeInputContent,
             this.channels.length,
@@ -1181,16 +1179,17 @@ export class Network {
     addSpikeSource(
         x: number,
         y: number,
+        style: ContainerStyle,
         period: [boolean, number],
-        saveAction: boolean,
         spikeInputContent: string,
         channelChords: [string, string, number][],
+        saveAction: boolean,
     ) {
         const spikeSource = new SpikeSource(
             this,
             x,
             y,
-            "vertical",
+            style,
             period,
             spikeInputContent,
         );
@@ -1225,11 +1224,16 @@ export class Network {
         this.dispatch(SubscriptionType.Topology);
     }
 
-    addSpikeSink(x: number, y: number, saveAction: boolean) {
-        this.addSpikeSinkObject(
-            new SpikeSink(this, x, y, "vertical"),
-            saveAction,
-        );
+    addSpikeSink(
+        x: number,
+        y: number,
+        style: ContainerStyle,
+        channels: number,
+        saveAction: boolean,
+    ) {
+        const spikeSink = new SpikeSink(this, x, y, style);
+        this.addSpikeSinkObject(spikeSink, saveAction);
+        spikeSink.addChannels(channels, true);
     }
 
     addSpikeSinkObject(spikeSink: SpikeSink, saveAction: boolean) {

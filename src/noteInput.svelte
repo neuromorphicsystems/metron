@@ -125,6 +125,7 @@ function update() {
         color: var(--base03);
         box-shadow: 0px 0px 3px 0px var(--base03);
         text-wrap: nowrap;
+        z-index: 10;
     }
 
     :global(.note-input-tooltip.show) {

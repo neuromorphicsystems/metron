@@ -1,0 +1,141 @@
+{
+    "type": "object",
+    "required": [
+        "version",
+        "neurons",
+        "spikeSources",
+        "spikeSinks",
+        "synapses"
+    ],
+    "properties": {
+        "version": {
+            "type": "string"
+        },
+        "neurons": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "id",
+                    "name",
+                    "tau",
+                    "threshold",
+                    "subtractOnReset",
+                    "instrument",
+                    "notes",
+                    "chordDuration",
+                    "x",
+                    "y",
+                    "fixed"
+                ],
+                "properties": {
+                    "id": { "type": "integer" },
+                    "name": { "type": "string" },
+                    "tau": { "type": "number", "minimum": 0.0 },
+                    "threshold": { "type": "number", "minimum": 0.0 },
+                    "subtractOnReset": { "type": "boolean" },
+                    "instrument": { "type": "string" },
+                    "notes": { "type": "string" },
+                    "chordDuration": { "type": "number" },
+                    "x": { "type": "number" },
+                    "y": { "type": "number" },
+                    "fixed": { "type": "boolean" }
+                }
+            }
+        },
+        "spikeSources": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": [
+                    "name",
+                    "spikes",
+                    "periodic",
+                    "period",
+                    "channels",
+                    "x",
+                    "y",
+                    "style"
+                ],
+                "properties": {
+                    "name": { "type": "string" },
+                    "spikes": { "type": "string" },
+                    "periodic": { "type": "boolean" },
+                    "period": { "type": "number" },
+                    "channels": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": [
+                                "id",
+                                "instrument",
+                                "notes",
+                                "chordDuration"
+                            ],
+                            "properties": {
+                                "id": { "type": "integer" },
+                                "instrument": { "type": "string" },
+                                "notes": { "type": "string" },
+                                "chordDuration": { "type": "number" }
+                            }
+                        }
+                    },
+                    "x": { "type": "number" },
+                    "y": { "type": "number" },
+                    "style": {
+                        "enum": [
+                            "vertical",
+                            "horizontal",
+                            "vertical-rectangle",
+                            "horizontal-rectangle"
+                        ]
+                    }
+                }
+            }
+        },
+        "spikeSinks": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["name", "channels", "x", "y", "style"],
+                "properties": {
+                    "name": { "type": "string" },
+                    "channels": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "required": ["id"],
+                            "properties": {
+                                "id": { "type": "integer" }
+                            }
+                        }
+                    },
+                    "x": { "type": "number" },
+                    "y": { "type": "number" },
+                    "style": {
+                        "enum": [
+                            "vertical",
+                            "horizontal",
+                            "vertical-rectangle",
+                            "horizontal-rectangle"
+                        ]
+                    }
+                }
+            }
+        },
+        "synapses": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "required": ["pre", "post", "delay", "weight", "tau"],
+                "properties": {
+                    "pre": { "type": "integer" },
+                    "post": { "type": "integer" },
+                    "delay": { "type": "integer", "exclusiveMinimum": 0 },
+                    "weight": { "type": "number" },
+                    "tau": { "type": "number", "minimum": 0.0 }
+                }
+            }
+        }
+    }
+}

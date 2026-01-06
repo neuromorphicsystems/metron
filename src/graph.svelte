@@ -951,19 +951,19 @@ onMount(() => {
                 network.addSpikeSource(
                     x,
                     y,
+                    "vertical",
                     [false, 0],
-                    true,
                     "0:20 1:40 2:60\n",
                     new Array(3).fill(null).map(() => [DEFAULT_INSTRUMENT, synth.nextNote(), DEFAULT_CHORD_DURATION]),
+                    true,
                 );
                 selection = network.spikeSources[network.spikeSources.length - 1];
                 drawContext.requestDraw();
                 break;
             }
             case "add-spike-sink": {
-                network.addSpikeSink(x, y, true);
+                network.addSpikeSink(x, y, "vertical", 3, true);
                 selection = network.spikeSinks[network.spikeSinks.length - 1];
-                selection.addChannels(3, true);
                 drawContext.requestDraw();
                 break;
             }
