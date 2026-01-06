@@ -131,7 +131,9 @@ function next(hotloopStart) {
 
     // neuron decay
     for (const neuron of neurons) {
-        neuron.potential *= neuron.mu;
+        if (neuron.mu != null) {
+            neuron.potential *= neuron.mu;
+        }
     }
 
     // synapse decay and spikes
@@ -176,14 +178,12 @@ function next(hotloopStart) {
             ++synapse.spikes[index];
         }
         // update the post potential for 2nd order neurons
-        for (const synapse of synapses) {
-            if (
-                synapse.muAndAlpha != null &&
-                synapse.current > 0 &&
-                synapse.post.type === TYPE_NEURON
-            ) {
-                synapse.post.potential = Math.max(0.0, synapse.post.potential + synapse.current);
-            }
+        if (
+            synapse.muAndAlpha != null &&
+            synapse.current > 0 &&
+            synapse.post.type === TYPE_NEURON
+        ) {
+            synapse.post.potential = Math.max(0.0, synapse.post.potential + synapse.current);
         }
     }
 
