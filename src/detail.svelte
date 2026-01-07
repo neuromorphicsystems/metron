@@ -103,6 +103,62 @@ const tooltip: [(element: HTMLElement, message: string) => void, () => void] = [
                     </div>
                     <NumberInput title="Duration" mathTitle={false} help="<strong>Chord duration in seconds</strong>&mdash;<em>positive float or zero</em><br>The chord duration of sampled instruments (anything but Synth) is limited by the samples' duration" integer={false} minimum={0} bind:value={selection.chordDuration} {tooltip}></NumberInput>
                 </div>
+                <div class="category">
+                    <div class="fields with-space">
+                        <BooleanInput
+                            title="Lock position"
+                            mathTitle={false}
+                            help="<strong>Manually position the neuron</strong><br>If ticked, the neuron's position is not updated by graph forces (but it can still be moved manually)"
+                            bind:value={selection.lockPosition}
+                            {tooltip}
+                            onchange={() => {
+                                const neuron = (selection as Neuron);
+                                if (neuron.lockPosition) {
+                                    neuron.display.fx = neuron.display.x;
+                                    neuron.display.fy = neuron.display.y;
+                                } else {
+                                    neuron.display.fx = null;
+                                    neuron.display.fy = null;
+                                }
+                                neuron.parent.dispatch(SubscriptionType.Display);
+                            }}
+                        ></BooleanInput>
+                    </div>
+                    {#if selection.lockPosition}
+                        <div class="fields">
+                            <NumberInput
+                                title="<mi>x</mi>"
+                                mathTitle={true}
+                                help={`<strong>Horizontal coordinate of the spike ${selection.type} display</strong>&mdash;<em>signed float</em>`}
+                                integer={false}
+                                minimum={null}
+                                value={selection.display.fx == null ? 0.0 : Math.round(selection.display.fx * 100) / 100}
+                                {tooltip}
+                                onchange={x => {
+                                    const neuron = (selection as Neuron);
+                                    neuron.display.x = x;
+                                    neuron.display.fx = x;
+                                    neuron.parent.dispatch(SubscriptionType.Display);
+                                }}>
+                            </NumberInput>
+                            <NumberInput
+                                title="<mi>y</mi>"
+                                mathTitle={true}
+                                help={`<strong>Vertical coordinate of the spike ${selection.type} display</strong>&mdash;<em>signed float</em>`}
+                                integer={false}
+                                minimum={null}
+                                value={selection.display.fy == null ? 0.0 : Math.round(selection.display.fy * 100) / 100}
+                                {tooltip}
+                                onchange={y => {
+                                    const neuron = (selection as Neuron);
+                                    neuron.display.y = y;
+                                    neuron.display.fy = y;
+                                    neuron.parent.dispatch(SubscriptionType.Display);
+                                }}>
+                            </NumberInput>
+                        </div>
+                    {/if}
+                </div>
                 <button class="delete-selection" aria-label="Delete" onclick={() => {
                     const neuron = selection as Neuron;
                     neuron.parent.removeNeuron(neuron, true);
@@ -223,6 +279,48 @@ const tooltip: [(element: HTMLElement, message: string) => void, () => void] = [
                         </div>
                     </div>
                 {/if}
+                <div class="category">
+                    <div class="fields">
+                        <NumberInput
+                            title="<mi>x</mi>"
+                            mathTitle={true}
+                            help={`<strong>Horizontal coordinate of the spike ${selection.type} display</strong>&mdash;<em>signed float</em>`}
+                            integer={false}
+                            minimum={null}
+                            value={Math.round((selection.display.x + selection.display.width / 2) * 100) / 100}
+                            {tooltip}
+                            onchange={x => {
+                                const sourceOrSink = selection as SpikeSource | SpikeSink;
+                                const dx = (x - sourceOrSink.display.width / 2) - sourceOrSink.display.x;
+                                for (const channel of sourceOrSink.channels) {
+                                    channel.display.x += dx;
+                                    channel.display.fx = channel.display.x;
+                                }
+                                sourceOrSink.display.x += dx;
+                                sourceOrSink.parent.dispatch(SubscriptionType.Display);
+                            }}>
+                        </NumberInput>
+                        <NumberInput
+                            title="<mi>y</mi>"
+                            mathTitle={true}
+                            help={`<strong>Vertical coordinate of the spike ${selection.type} display</strong>&mdash;<em>signed float</em>`}
+                            integer={false}
+                            minimum={null}
+                            value={Math.round((selection.display.y + selection.display.height / 2) * 100) / 100}
+                            {tooltip}
+                            onchange={y => {
+                                const sourceOrSink = selection as SpikeSource | SpikeSink;
+                                const dy = (y - sourceOrSink.display.height / 2) - sourceOrSink.display.y;
+                                for (const channel of sourceOrSink.channels) {
+                                    channel.display.y += dy;
+                                    channel.display.fy = channel.display.y;
+                                }
+                                sourceOrSink.display.y += dy;
+                                sourceOrSink.parent.dispatch(SubscriptionType.Display);
+                            }}>
+                        </NumberInput>
+                    </div>
+                </div>
                 <button class="delete-selection" aria-label="Delete" onclick={() => {
                     switch (selection?.type) {
                         case "source":

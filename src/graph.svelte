@@ -516,8 +516,10 @@ class NetworkSelection {
                     if (tool === "select") {
                         if (node.type === "neuron") {
                             node.active = false;
-                            node.fx = undefined;
-                            node.fy = undefined;
+                            if (!node.parent.lockPosition) {
+                                node.fx = null;
+                                node.fy = null;
+                            }
                         } else {
                             node.parent.parent.display.active = false;
                             for (const channel of node.parent.parent.channels) {
@@ -945,7 +947,18 @@ onMount(() => {
         ]);
         switch (tool) {
             case"add-neuron": {
-                network.addNeuron(x, y, 60.0, 1.0, false, DEFAULT_INSTRUMENT, synth.nextNote(), DEFAULT_CHORD_DURATION, true);
+                network.addNeuron(
+                    x,
+                    y,
+                    false,
+                    60.0,
+                    1.0,
+                    false,
+                    DEFAULT_INSTRUMENT,
+                    synth.nextNote(),
+                    DEFAULT_CHORD_DURATION,
+                    true
+                );
                 selection = network.neurons[network.neurons.length - 1];
                 drawContext.requestDraw();
                 break;

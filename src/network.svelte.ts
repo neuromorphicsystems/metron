@@ -141,8 +141,8 @@ export class NeuronDisplay {
     y: number;
     vx: number;
     vy: number;
-    fx?: number;
-    fy?: number;
+    fx: number | null = $state.raw(null);
+    fy: number | null = $state.raw(null);
     index?: number;
     hover: boolean;
     active: boolean;
@@ -154,12 +154,19 @@ export class NeuronDisplay {
     // cache
     stroke: [string, number];
 
-    constructor(parent: Neuron, x: number, y: number) {
+    constructor(parent: Neuron, x: number, y: number, lockPosition: boolean) {
         this.parent = parent;
         this.type = "neuron";
         this.id = parent.parent.nextId();
         this.x = x;
         this.y = y;
+        if (lockPosition) {
+            this.fx = x;
+            this.fy = y;
+        } else {
+            this.fx = null;
+            this.fy = null;
+        }
         this.vx = 0.0;
         this.vy = 0.0;
         this.hover = false;
@@ -184,6 +191,7 @@ export class Neuron {
     instrument: string = $state.raw("None");
     noteInputContent: string = $state.raw("");
     chordDuration: number = $state.raw(0.0);
+    lockPosition: boolean = $state.raw(false);
     notes: string[] = [];
     display: NeuronDisplay;
 
@@ -191,6 +199,7 @@ export class Neuron {
         parent: Network,
         x: number,
         y: number,
+        lockPosition: boolean,
         tau: number,
         threshold: number,
         subtractOnReset: boolean,
@@ -209,8 +218,9 @@ export class Neuron {
         this.instrument = instrument;
         this.noteInputContent = noteInputContent;
         this.chordDuration = chordDuration;
+        this.lockPosition = lockPosition;
         this.notes = parseNoteInput(this.noteInputContent, null);
-        this.display = new NeuronDisplay(this, x, y);
+        this.display = new NeuronDisplay(this, x, y, lockPosition);
     }
 }
 
@@ -404,8 +414,8 @@ export class SpikeSourceChannelDisplay {
     y: number;
     vx: number;
     vy: number;
-    fx?: number;
-    fy?: number;
+    fx: number;
+    fy: number;
     index?: number;
     hover: boolean;
     active: boolean;
@@ -468,8 +478,8 @@ export class SpikeSourceChannel {
 export class SpikeSourceDisplay {
     parent: SpikeSource;
     id: number;
-    x: number;
-    y: number;
+    x: number = $state.raw(0.0);
+    y: number = $state.raw(0.0);
     width: number;
     height: number;
     hover: boolean;
@@ -663,8 +673,8 @@ export class SpikeSinkChannelDisplay {
     y: number;
     vx: number;
     vy: number;
-    fx?: number;
-    fy?: number;
+    fx: number;
+    fy: number;
     index?: number;
     hover: boolean;
     active: boolean;
@@ -711,8 +721,8 @@ export class SpikeSinkChannel {
 export class SpikeSinkDisplay {
     parent: SpikeSink;
     id: number;
-    x: number;
-    y: number;
+    x: number = $state.raw(0.0);
+    y: number = $state.raw(0.0);
     width: number;
     height: number;
     hover: boolean;
@@ -991,6 +1001,7 @@ export class Network {
     addNeuron(
         x: number,
         y: number,
+        lockPosition: boolean,
         tau: number,
         threshold: number,
         subtractOnReset: boolean,
@@ -1004,6 +1015,7 @@ export class Network {
                 this,
                 x,
                 y,
+                lockPosition,
                 tau,
                 threshold,
                 subtractOnReset,

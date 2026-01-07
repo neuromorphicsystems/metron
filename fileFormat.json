@@ -26,7 +26,7 @@
                     "chordDuration",
                     "x",
                     "y",
-                    "fixed"
+                    "lockPosition"
                 ],
                 "properties": {
                     "id": { "type": "integer" },
@@ -39,7 +39,7 @@
                     "chordDuration": { "type": "number" },
                     "x": { "type": "number" },
                     "y": { "type": "number" },
-                    "fixed": { "type": "boolean" }
+                    "lockPosition": { "type": "boolean" }
                 }
             }
         },

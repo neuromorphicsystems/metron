@@ -28,6 +28,7 @@ function load(json: string): Network {
         newNetwork.addNeuron(
             neuron.x,
             neuron.y,
+            neuron.lockPosition,
             neuron.tau,
             neuron.threshold,
             neuron.subtractOnReset,
@@ -167,7 +168,7 @@ function load(json: string): Network {
                 chordDuration: neuron.chordDuration,
                 x: neuron.display.x,
                 y: neuron.display.y,
-                fixed: false,
+                lockPosition: neuron.lockPosition,
             })),
             spikeSources: network.spikeSources.map(spikeSource => ({
                 name: spikeSource.name,
