@@ -56,7 +56,7 @@ const spikeSinks = [];
 //     post: Neuron | SpikeSinkChannel,
 //     delayMinusOne: number,
 //     weight: number,
-//     muAndAlpha: [number, number] | null,
+//     mu: number | null,
 //     spikes: number[],
 //     current: number,
 // }[]
@@ -142,8 +142,8 @@ function next(hotloopStart) {
     // synapse decay and spikes
     for (const synapse of synapses) {
         // current decay
-        if (synapse.muAndAlpha != null && synapse.current > 0) {
-            synapse.current *= synapse.muAndAlpha[0];
+        if (synapse.mu != null && synapse.current > 0) {
+            synapse.current *= synapse.mu;
         }
         // remove spikes that have arrived and:
         // - update the current for a 2nd order neuron
@@ -156,10 +156,10 @@ function next(hotloopStart) {
                     break;
                 }
                 if (synapse.post.type === TYPE_NEURON) {
-                    if (synapse.muAndAlpha == null) {
+                    if (synapse.mu == null) {
                         synapse.post.potential = Math.max(0.0, synapse.post.potential + synapse.weight);
                     } else {
-                        synapse.current += synapse.muAndAlpha[1];
+                        synapse.current += (1.0 - synapse.mu);
                     }
                 } else {
                     sunkSpikes.push([
@@ -168,9 +168,7 @@ function next(hotloopStart) {
                         synapse.post.id,
                         synapse.delayMinusOne + 1,
                         synapse.weight,
-                        synapse.muAndAlpha == null
-                            ? 0
-                            : -1 / Math.log(synapse.muAndAlpha[0]),
+                        synapse.mu == null ? 0 : -1 / Math.log(synapse.mu),
                     ]);
                 }
             }
@@ -182,7 +180,7 @@ function next(hotloopStart) {
         }
         // update the post potential for 2nd order neurons
         if (
-            synapse.muAndAlpha != null &&
+            synapse.mu != null &&
             synapse.current > 0 &&
             synapse.post.type === TYPE_NEURON
         ) {
@@ -518,13 +516,7 @@ self.onmessage = event => {
                     post: post(synapse[2]),
                     delayMinusOne: synapse[3] - 1,
                     weight: synapse[4],
-                    muAndAlpha:
-                        synapse[5] === 0
-                            ? null
-                            : [
-                                Math.exp(-1.0 / synapse[5]),
-                                1.0 - Math.exp(-1.0 / synapse[5]),
-                            ],
+                    mu: synapse[5] === 0 ? null : Math.exp(-1.0 / synapse[5]),
                     spikes: [],
                     current: 0.0,
                 }),
@@ -533,12 +525,7 @@ self.onmessage = event => {
                     currentSynapse.post = post(newSynapse[2]);
                     currentSynapse.delayMinusOne = newSynapse[3] - 1;
                     currentSynapse.weight = newSynapse[4];
-                    if (newSynapse[5] === 0) {
-                        currentSynapse.muAndAlpha = null;
-                    } else {
-                        const mu = Math.exp(-1.0 / newSynapse[5]);
-                        currentSynapse.muAndAlpha = [mu, 1.0 - mu];
-                    }
+                    currentSynapse.mu = newSynapse[5] === 0 ? null : Math.exp(-1.0 / newSynapse[5]);
                 },
             );
             for (const synapse of synapses) {
