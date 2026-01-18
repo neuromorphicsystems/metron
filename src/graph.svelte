@@ -1,6 +1,7 @@
 <script lang="ts">
 import * as d3 from "d3";
 import { onMount } from "svelte";
+import { nextColor } from "./colormap.ts";
 
 import type {
     Link,
@@ -23,11 +24,7 @@ import {
     SPIKE_RADIUS,
     SubscriptionType,
 } from "./network.svelte.ts";
-import {
-    DEFAULT_CHORD_DURATION,
-    DEFAULT_INSTRUMENT,
-    synth,
-} from "./synth.svelte";
+import { synth } from "./synth.svelte";
 import type { Tool } from "./tool";
 
 type LinkSelection = d3.Selection<SVGGElement, Link, SVGGElement, undefined>;
@@ -343,8 +340,7 @@ class NetworkSelection {
                     .append("circle")
                     .attr("cx", 0)
                     .attr("cy", 0)
-                    .attr("r", NEURON_RADIUS)
-                    .attr("fill", "#586E75");
+                    .attr("r", NEURON_RADIUS);
                 nodeGroup
                     .append("circle")
                     .attr("class", "stroke")
@@ -370,11 +366,7 @@ class NetworkSelection {
             )
             .join(enter => {
                 const circle = enter.append("circle");
-                circle
-                    .attr("cx", 0)
-                    .attr("cy", 0)
-                    .attr("r", 0)
-                    .attr("fill", "#6C71C4");
+                circle.attr("cx", 0).attr("cy", 0).attr("r", 0);
                 return circle;
             });
 
@@ -613,7 +605,6 @@ class NetworkSelection {
             .data(spikes)
             .join("circle")
             .attr("r", SPIKE_RADIUS)
-            .attr("stroke", "#586E75")
             .attr("stroke-width", 2);
     }
 
@@ -755,7 +746,8 @@ class DrawContext {
         this.networkSelection.nodeGlowCircle
             .attr("transform", node => `translate(${node.x},${node.y})`)
             .attr("r", node => node.glowRadius)
-            .attr("opacity", node => node.glowOpacity);
+            .attr("opacity", node => node.glowOpacity)
+            .attr("fill", node => node.glowColor);
         this.networkSelection.linkLine
             .attr("stroke", "#586E75")
             .attr("stroke-width", 2)
@@ -783,11 +775,13 @@ class DrawContext {
                     y1 * (spike.position + correction) +
                     y0 * (1.0 - spike.position - correction);
             }
-            spike.fill = spike.synapse.weight >= 0.0 ? "#586E75" : "#FDF6E3";
+            spike.fill = spike.synapse.weight >= 0.0 ? spike.color : "#FDF6E3";
+            spike.stroke = spike.color;
         }
         this.networkSelection.spikeCircle
             .attr("cx", spike => spike.x)
             .attr("cy", spike => spike.y)
+            .attr("stroke", spike => spike.stroke)
             .attr("fill", spike => spike.fill);
         for (const node of this.networkSelection.nodeCircle.data()) {
             node.stroke = nodeStroke(node, tool, this.newSynapsePre, selection);
@@ -802,6 +796,7 @@ class DrawContext {
         );
         this.networkSelection.nodeFillCircle
             .attr("cy", node => -node.translation)
+            .attr("fill", node => node.parent.color)
             .attr("opacity", node => node.opacity);
         for (const spikeSourceDisplay of this.networkSelection.spikeSourceRect.data()) {
             spikeSourceDisplay.stroke = containerStroke(
@@ -947,6 +942,7 @@ onMount(() => {
         ]);
         switch (tool) {
             case"add-neuron": {
+                const [instrument, chordDuration] = network.lastInstrumentAndChordDuration();
                 network.addNeuron(
                     x,
                     y,
@@ -954,9 +950,11 @@ onMount(() => {
                     60.0,
                     1.0,
                     false,
-                    DEFAULT_INSTRUMENT,
+                    instrument,
                     synth.nextNote(),
-                    DEFAULT_CHORD_DURATION,
+                    chordDuration,
+                    nextColor(),
+                    true,
                     true
                 );
                 selection = network.neurons[network.neurons.length - 1];
@@ -964,13 +962,14 @@ onMount(() => {
                 break;
             }
             case "add-spike-source": {
+                const [instrument, chordDuration] = network.lastInstrumentAndChordDuration();
                 network.addSpikeSource(
                     x,
                     y,
                     "vertical",
                     [false, 0],
                     "0:20 1:40 2:60\n",
-                    new Array(3).fill(null).map(() => [DEFAULT_INSTRUMENT, synth.nextNote(), DEFAULT_CHORD_DURATION]),
+                    new Array(3).fill(null).map(() => [instrument, synth.nextNote(), chordDuration, nextColor()]),
                     true,
                 );
                 selection = network.spikeSources[network.spikeSources.length - 1];

@@ -1,5 +1,7 @@
 <script lang="ts">
 import BooleanInput from "./booleanInput.svelte";
+import ColorInput from "./colorInput.svelte";
+import { nextColor } from "./colormap.ts";
 import Dropdown from "./dropdown.svelte";
 import type {
     ContainerStyle,
@@ -90,21 +92,39 @@ const tooltip: [(element: HTMLElement, message: string) => void, () => void] = [
                     </div>
                 </div>
                 <div class="category">
-                    <div class="title with-space" onmouseenter={event => {
-                        showTooltip(event.target as HTMLElement, "<strong>Instrument and note(s) for the neuron</strong>&mdash;<em>note1 note2...</em><br>The note(s) use the scientific pitch notation and are played when the neuron spikes");
-                    }} onmouseleave={() => {
-                        hideTooltip();
-                    }} role={null}>Instrument</div>
                     <div class="fields with-space">
-                        <Dropdown width={100} options={synth.dropdownOptions()} bind:value={selection.instrument}></Dropdown>
+                        <div class="title" onmouseenter={event => {
+                            showTooltip(event.target as HTMLElement, "<strong>Instrument played by the neuron</strong><br>Sounds are not enabled by default (tick the checkbox in the bottom control bar to activate them)");
+                        }} onmouseleave={() => {
+                            hideTooltip();
+                        }} role={null}>Instrument</div>
+                        <Dropdown width={200} options={synth.dropdownOptions()} bind:value={selection.instrument}></Dropdown>
+                    </div>
+                    <div class="fields with-space">
+                        <NumberInput title="Chord" mathTitle={false} help="<strong>Chord duration in seconds and notes</strong>&mdash;<em>positive float or zero, note1 note2...</em><br>The chord duration of sampled instruments (anything but Synth) is limited by the samples' duration<br>The note(s) use the scientific pitch notation and are played when the neuron spikes" integer={false} minimum={0} bind:value={selection.chordDuration} {tooltip}></NumberInput>
                         <NoteInput bind:content={selection.noteInputContent} onchange={notes => {
                             (selection as Neuron).notes = notes;
                         }}></NoteInput>
                     </div>
-                    <NumberInput title="Duration" mathTitle={false} help="<strong>Chord duration in seconds</strong>&mdash;<em>positive float or zero</em><br>The chord duration of sampled instruments (anything but Synth) is limited by the samples' duration" integer={false} minimum={0} bind:value={selection.chordDuration} {tooltip}></NumberInput>
+                    <div class="fields" class:with-space={!selection.updateColorWithSpikes}>
+                        <BooleanInput title="Update color with spikes" mathTitle={false} help="<strong>Reset mechanism</strong><br>If unticked, the neuron uses the color provided by the user</br>If ticked, the neuron's color is calculated from incoming spikes" bind:value={selection.updateColorWithSpikes} {tooltip} onchange={() => {
+                            (selection as Neuron).parent.dispatch(SubscriptionType.Parameters);
+                        }}></BooleanInput>
+                    </div>
+                    {#if !selection.updateColorWithSpikes}
+                        <ColorInput
+                            title="Color"
+                            help="<strong>Neuron spike color</strong>"
+                            bind:value={selection.color}
+                            {tooltip}
+                            onchange={() => {
+                                (selection as Neuron).parent.dispatch(SubscriptionType.Parameters);
+                            }}
+                        ></ColorInput>
+                    {/if}
                 </div>
                 <div class="category">
-                    <div class="fields with-space">
+                    <div class="fields" class:with-space={selection.lockPosition}>
                         <BooleanInput
                             title="Lock position"
                             mathTitle={false}
@@ -192,7 +212,7 @@ const tooltip: [(element: HTMLElement, message: string) => void, () => void] = [
                                 spikeSource.addChannels(
                                     new Array(value - spikeSource.channels.length)
                                         .fill(null)
-                                        .map(() => [instrument, synth.nextNote(), chordDuration]),
+                                        .map(() => [instrument, synth.nextNote(), chordDuration, nextColor()]),
                                     true,
                                 );
                             } else if (value < spikeSource.channels.length) {
@@ -359,26 +379,29 @@ const tooltip: [(element: HTMLElement, message: string) => void, () => void] = [
                             </div>
                         </div>
                         {#if selection.type === "source"}
-                            <div class="title with-space" onmouseenter={event => {
-                                showTooltip(event.target as HTMLElement, "<strong>Instrument and note(s) for the neuron</strong>&mdash;<em>note1 note2...</em><br>The note(s) use the scientific pitch notation and are played when the neuron spikes");
-                            }} onmouseleave={() => {
-                                hideTooltip();
-                            }} role={null}>Instrument</div>
                             <div class="fields with-space">
-                                <Dropdown width={100} options={synth.dropdownOptions()} bind:value={(channel as SpikeSourceChannel).instrument}></Dropdown>
+                                <div class="title" onmouseenter={event => {
+                                    showTooltip(event.target as HTMLElement, "<strong>Instrument played by the channel</strong><br>Sounds do not play by default, they must be enabled by ticking the checkbox in the bottom control bar");
+                                }} onmouseleave={() => {
+                                    hideTooltip();
+                                }} role={null}>Instrument</div>
+                                <Dropdown width={200} options={synth.dropdownOptions()} bind:value={(channel as SpikeSourceChannel).instrument}></Dropdown>
+                            </div>
+                            <div class="fields with-space">
+                                <NumberInput title="Chord" mathTitle={false} help="<strong>Chord duration in seconds and notes</strong>&mdash;<em>positive float or zero, note1 note2...</em><br>The chord duration of sampled instruments (anything but Synth) is limited by the samples' duration<br>The note(s) use the scientific pitch notation and are played when the neuron spikes" integer={false} minimum={0} bind:value={(channel as SpikeSourceChannel).chordDuration} {tooltip}></NumberInput>
                                 <NoteInput bind:content={(channel as SpikeSourceChannel).noteInputContent} onchange={notes => {
-                                    (selection as Neuron).notes = notes;
+                                    (channel as SpikeSourceChannel).notes = notes;
                                 }}></NoteInput>
                             </div>
-                            <NumberInput
-                                title="Duration"
-                                mathTitle={false}
-                                help="<strong>Chord duration in seconds</strong>&mdash;<em>positive float or zero</em><br>The chord duration of sampled instruments (anything but Synth) is limited by the samples' duration"
-                                integer={false}
-                                minimum={0}
-                                bind:value={(channel as SpikeSourceChannel).chordDuration}
+                            <ColorInput
+                                title="Color"
+                                help="<strong>Channel spike color</strong><br>Connected neurons can be configured to update their color when they receive a spike<br>The color has no impact on the simulation and only serves visualization purposes"
+                                bind:value={(channel as SpikeSourceChannel).color}
                                 {tooltip}
-                            ></NumberInput>
+                                onchange={() => {
+                                    (channel as SpikeSourceChannel).parent.parent.dispatch(SubscriptionType.Parameters);
+                                }}
+                            ></ColorInput>
                             <SynapseList synapses={(channel as SpikeSourceChannel).postSynapses} end="post" bind:selection {tooltip}></SynapseList>
                         {:else}
                             <SynapseList synapses={(channel as SpikeSinkChannel).preSynapses} end="post" bind:selection {tooltip}></SynapseList>
@@ -444,11 +467,6 @@ const tooltip: [(element: HTMLElement, message: string) => void, () => void] = [
 
     .category .title {
         color: var(--base03);
-    }
-
-    .category .title.with-space {
-        padding-bottom: 5px;
-        display: inline-block;
     }
 
     .category .title.channel {

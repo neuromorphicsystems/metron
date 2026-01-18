@@ -26,7 +26,8 @@
                     "chordDuration",
                     "x",
                     "y",
-                    "lockPosition"
+                    "lockPosition",
+                    "color"
                 ],
                 "properties": {
                     "id": { "type": "integer" },
@@ -39,7 +40,8 @@
                     "chordDuration": { "type": "number" },
                     "x": { "type": "number" },
                     "y": { "type": "number" },
-                    "lockPosition": { "type": "boolean" }
+                    "lockPosition": { "type": "boolean" },
+                    "color": { "type": ["string", "null"] }
                 }
             }
         },
@@ -70,13 +72,15 @@
                                 "id",
                                 "instrument",
                                 "notes",
-                                "chordDuration"
+                                "chordDuration",
+                                "color"
                             ],
                             "properties": {
                                 "id": { "type": "integer" },
                                 "instrument": { "type": "string" },
                                 "notes": { "type": "string" },
-                                "chordDuration": { "type": "number" }
+                                "chordDuration": { "type": "number" },
+                                "color": { "type": "string" }
                             }
                         }
                     },

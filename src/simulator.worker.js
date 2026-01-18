@@ -1,3 +1,5 @@
+import Color from "colorjs.io";
+
 const ACTION_NEXT = 0;
 const ACTION_SNAPSHOT = 1;
 
@@ -22,6 +24,11 @@ const TYPE_SPIKE_SINK = 2;
 //     postSynapses: Synapse[],
 //     potential: number,
 //     spikeTime: number | null,
+//     spikeColorRgbF64: number,
+//     color: string,
+//     colorRgbF64: number,
+//     colorLab: [number, number, number],
+//     updateColorWithSpikes: boolean,
 // }[]
 const neurons = [];
 
@@ -30,6 +37,7 @@ const neurons = [];
 //     type: number,
 //     postSynapses: Synapse[],
 //     spikeTime: number | null,
+//     color: string,
 // }
 // spikeSources: {
 //     id: number,
@@ -57,8 +65,9 @@ const spikeSinks = [];
 //     delayMinusOne: number,
 //     weight: number,
 //     mu: number | null,
-//     spikes: number[],
+//     spikes: [number, string][],
 //     current: number,
+//     currentColorLab: [number, number, number],
 // }[]
 const synapses = [];
 
@@ -77,6 +86,21 @@ function bisectLeft(spikesTimeAndChannel, time, periodic) {
         return 0;
     }
     return left;
+}
+
+function rgbToRgbF64(rgb) {
+    return (
+        Math.round(rgb[0] * 255) |
+        (Math.round(rgb[1] * 255) << 8) |
+        (Math.round(rgb[2] * 255) << 16)
+    );
+}
+
+function rgbF64ToHex(rgbF64) {
+    const r = rgbF64 & 0xff;
+    const g = (rgbF64 & 0xff00) >> 8;
+    const b = (rgbF64 & 0xff0000) >> 16;
+    return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
 }
 
 function join(currentArray, newArray, onEnter, onUpdate) {
@@ -129,6 +153,7 @@ function next(hotloopStart) {
     //     delay: number,
     //     weight: number,
     //     mu: number,
+    //     color: string,
     // ][]
     const sunkSpikes = [];
 
@@ -142,7 +167,7 @@ function next(hotloopStart) {
     // synapse decay and spikes
     for (const synapse of synapses) {
         // current decay
-        if (synapse.mu != null && synapse.current > 0) {
+        if (synapse.mu != null) {
             synapse.current *= synapse.mu;
         }
         // remove spikes that have arrived and:
@@ -152,14 +177,58 @@ function next(hotloopStart) {
         {
             let index = 0;
             for (; index < synapse.spikes.length; ++index) {
-                if (synapse.spikes[index] < synapse.delayMinusOne) {
+                if (synapse.spikes[index][0] < synapse.delayMinusOne) {
                     break;
                 }
                 if (synapse.post.type === TYPE_NEURON) {
+                    const lab = new Color(synapse.spikes[index][1]).to(
+                        "oklab",
+                    ).coords;
+                    if (synapse.weight < 0) {
+                        lab[0] = 1.0 - lab[0];
+                        lab[1] = -lab[1];
+                        lab[2] = -lab[2];
+                    }
                     if (synapse.mu == null) {
-                        synapse.post.potential = Math.max(0.0, synapse.post.potential + synapse.weight);
+                        if (synapse.post.updateColorWithSpikes) {
+                            const alpha =
+                                synapse.post.potential /
+                                (synapse.post.potential +
+                                    Math.abs(synapse.weight));
+                            synapse.post.colorLab[0] =
+                                alpha * synapse.post.colorLab[0] +
+                                (1 - alpha) * lab[0];
+                            synapse.post.colorLab[1] =
+                                alpha * synapse.post.colorLab[1] +
+                                (1 - alpha) * lab[1];
+                            synapse.post.colorLab[2] =
+                                alpha * synapse.post.colorLab[2] +
+                                (1 - alpha) * lab[2];
+                            synapse.post.colorRgbF64 = rgbToRgbF64(
+                                new Color({
+                                    space: "oklab",
+                                    coords: synapse.post.colorLab,
+                                }).to("srgb").coords,
+                            );
+                            synapse.post.color = rgbF64ToHex(
+                                synapse.post.colorRgbF64,
+                            );
+                        }
+                        synapse.post.potential += synapse.weight;
                     } else {
-                        synapse.current += (1.0 - synapse.mu);
+                        const alpha =
+                            synapse.current /
+                            (synapse.current + 1.0 - synapse.mu);
+                        synapse.currentColorLab[0] =
+                            alpha * synapse.currentColorLab[0] +
+                            (1 - alpha) * lab[0];
+                        synapse.currentColorLab[1] =
+                            alpha * synapse.currentColorLab[1] +
+                            (1 - alpha) * lab[1];
+                        synapse.currentColorLab[2] =
+                            alpha * synapse.currentColorLab[2] +
+                            (1 - alpha) * lab[2];
+                        synapse.current += 1.0 - synapse.mu;
                     }
                 } else {
                     sunkSpikes.push([
@@ -169,6 +238,7 @@ function next(hotloopStart) {
                         synapse.delayMinusOne + 1,
                         synapse.weight,
                         synapse.mu == null ? 0 : -1 / Math.log(synapse.mu),
+                        synapse.spikes[index][1],
                     ]);
                 }
             }
@@ -176,15 +246,38 @@ function next(hotloopStart) {
         }
         // update the time of remaining spikes
         for (let index = 0; index < synapse.spikes.length; ++index) {
-            ++synapse.spikes[index];
+            ++synapse.spikes[index][0];
         }
         // update the post potential for 2nd order neurons
-        if (
-            synapse.mu != null &&
-            synapse.current > 0 &&
-            synapse.post.type === TYPE_NEURON
-        ) {
-            synapse.post.potential = Math.max(0.0, synapse.post.potential + synapse.current * synapse.weight);
+        if (synapse.mu != null && synapse.post.type === TYPE_NEURON) {
+            if (synapse.post.updateColorWithSpikes && synapse.current > 0 && synapse.weight !== 0.0) {
+                const alpha =
+                    synapse.post.potential /
+                    (synapse.post.potential +
+                        synapse.current * Math.abs(synapse.weight));
+                synapse.post.colorLab[0] =
+                    alpha * synapse.post.colorLab[0] +
+                    (1 - alpha) * synapse.currentColorLab[0];
+                synapse.post.colorLab[1] =
+                    alpha * synapse.post.colorLab[1] +
+                    (1 - alpha) * synapse.currentColorLab[1];
+                synapse.post.colorLab[2] =
+                    alpha * synapse.post.colorLab[2] +
+                    (1 - alpha) * synapse.currentColorLab[2];
+                synapse.post.colorRgbF64 = rgbToRgbF64(
+                    new Color({
+                        space: "oklab",
+                        coords: synapse.post.colorLab,
+                    }).to("srgb").coords,
+                );
+                synapse.post.color = rgbF64ToHex(synapse.post.colorRgbF64);
+            }
+            synapse.post.potential += synapse.current * synapse.weight;
+        }
+    }
+    for (const neuron of neurons) {
+        if (neuron.potential < 0.0) {
+            neuron.potential = 0.0;
         }
     }
 
@@ -197,16 +290,19 @@ function next(hotloopStart) {
                 neuron.potential = 0;
             }
             for (const synapse of neuron.postSynapses) {
-                synapse.spikes.push(0);
+                synapse.spikes.push([0, neuron.color]);
             }
             neuron.spikeTime = tick;
+            neuron.spikeColorRgbF64 = neuron.colorRgbF64;
         }
     }
 
     // inject source spikes
     for (const spikeSource of spikeSources) {
-        const initialSpikesTimeAndChannelIndex = spikeSource.spikesTimeAndChannelIndex;
-        const sourceTick = spikeSource.period == null ? tick : tick % spikeSource.period;
+        const initialSpikesTimeAndChannelIndex =
+            spikeSource.spikesTimeAndChannelIndex;
+        const sourceTick =
+            spikeSource.period == null ? tick : tick % spikeSource.period;
         while (
             spikeSource.spikesTimeAndChannelIndex <
             spikeSource.spikesTimeAndChannel.length &&
@@ -221,14 +317,19 @@ function next(hotloopStart) {
                 ][1]
                 ];
             for (const synapse of channel.postSynapses) {
-                synapse.spikes.push(0);
+                synapse.spikes.push([0, channel.color]);
             }
             channel.spikeTime = tick;
             if (spikeSource.period == null) {
                 ++spikeSource.spikesTimeAndChannelIndex;
             } else {
-                spikeSource.spikesTimeAndChannelIndex = (spikeSource.spikesTimeAndChannelIndex + 1) % spikeSource.spikesTimeAndChannel.length;
-                if (spikeSource.spikesTimeAndChannelIndex === initialSpikesTimeAndChannelIndex) {
+                spikeSource.spikesTimeAndChannelIndex =
+                    (spikeSource.spikesTimeAndChannelIndex + 1) %
+                    spikeSource.spikesTimeAndChannel.length;
+                if (
+                    spikeSource.spikesTimeAndChannelIndex ===
+                    initialSpikesTimeAndChannelIndex
+                ) {
                     break;
                 }
             }
@@ -254,7 +355,7 @@ function next(hotloopStart) {
 
 function postData(buffer, sunkSpikes) {
     const byteLength =
-        (neurons.length * 3 +
+        (neurons.length * 5 +
             spikeSources.length * 2 +
             spikeSources.reduce(
                 (total, spikeSource) => total + spikeSource.channels.length,
@@ -274,10 +375,12 @@ function postData(buffer, sunkSpikes) {
                 neuron.id,
                 neuron.potential / neuron.threshold,
                 neuron.spikeTime == null ? -1 : tick - neuron.spikeTime,
+                neuron.spikeColorRgbF64,
+                neuron.colorRgbF64,
             ],
             offset,
         );
-        offset += 3;
+        offset += 5;
     }
     for (const spikeSource of spikeSources) {
         view.set([spikeSource.id, spikeSource.channels.length], offset);
@@ -297,7 +400,10 @@ function postData(buffer, sunkSpikes) {
         .filter(synapse => synapse.spikes.length > 0)
         .map(synapse => [
             synapse.id,
-            synapse.spikes.map(spike => spike / (synapse.delayMinusOne + 1)),
+            synapse.spikes.map(spike => [
+                spike[0] / (synapse.delayMinusOne + 1),
+                spike[1],
+            ]),
         ]);
     self.postMessage({
         type: "simulator-update",
@@ -393,16 +499,24 @@ self.onmessage = event => {
             join(
                 neurons,
                 network.neurons,
-                neuron => ({
-                    id: neuron[0],
-                    type: TYPE_NEURON,
-                    mu: neuron[1] === 0 ? null : Math.exp(-1.0 / neuron[1]),
-                    threshold: neuron[2],
-                    subtractOnReset: neuron[3],
-                    postSynapses: [],
-                    potential: 0.0,
-                    spikeTime: null,
-                }),
+                neuron => {
+                    const color = new Color(neuron[4]).to("srgb");
+                    return {
+                        id: neuron[0],
+                        type: TYPE_NEURON,
+                        mu: neuron[1] === 0 ? null : Math.exp(-1.0 / neuron[1]),
+                        threshold: neuron[2],
+                        subtractOnReset: neuron[3],
+                        postSynapses: [],
+                        potential: 0.0,
+                        spikeTime: null,
+                        spikeColorRgbF64: neuron[4],
+                        color: neuron[4],
+                        colorRgbF64: rgbToRgbF64(color.coords),
+                        colorLab: color.to("oklab").coords,
+                        updateColorWithSpikes: neuron[5],
+                    };
+                },
                 (currentNeuron, newNeuron) => {
                     currentNeuron.mu =
                         newNeuron[1] === 0
@@ -411,6 +525,14 @@ self.onmessage = event => {
                     currentNeuron.threshold = newNeuron[2];
                     currentNeuron.subtractOnReset = newNeuron[3];
                     currentNeuron.postSynapses.length = 0;
+                    if (!newNeuron[5]) {
+                        const color = new Color(newNeuron[4]).to("srgb");
+                        currentNeuron.spikeColorRgbF64 = rgbToRgbF64(color.coords);
+                        currentNeuron.color = newNeuron[4];
+                        currentNeuron.colorRgbF64 = currentNeuron.spikeColorRgbF64;
+                        currentNeuron.colorLab = color.to("oklab").coords;
+                    }
+                    currentNeuron.updateColorWithSpikes = newNeuron[5];
                 },
             );
             join(
@@ -418,11 +540,12 @@ self.onmessage = event => {
                 network.spikeSources,
                 spikeSource => ({
                     id: spikeSource[0],
-                    channels: spikeSource[1].map(id => ({
+                    channels: spikeSource[1].map(([id, color]) => ({
                         id,
                         type: TYPE_SPIKE_SOURCE,
                         postSynapses: [],
                         spikeTime: null,
+                        color,
                     })),
                     spikesTimeAndChannel: spikeSource[2],
                     spikesTimeAndChannelIndex: bisectLeft(
@@ -439,19 +562,25 @@ self.onmessage = event => {
                             channel.spikeTime,
                         ]),
                     );
-                    currentSpikeSource.channels = newSpikeSource[1].map(id => {
-                        const spikeTime = currentChannelIdToSpikeTime.get(id);
-                        return {
-                            id,
-                            type: TYPE_SPIKE_SOURCE,
-                            postSynapses: [],
-                            spikeTime: spikeTime == null ? null : spikeTime,
-                        };
-                    });
+                    currentSpikeSource.channels = newSpikeSource[1].map(
+                        ([id, color]) => {
+                            const spikeTime =
+                                currentChannelIdToSpikeTime.get(id);
+                            return {
+                                id,
+                                type: TYPE_SPIKE_SOURCE,
+                                postSynapses: [],
+                                spikeTime: spikeTime == null ? null : spikeTime,
+                                color,
+                            };
+                        },
+                    );
                     currentSpikeSource.spikesTimeAndChannel = newSpikeSource[2];
                     currentSpikeSource.spikesTimeAndChannelIndex = bisectLeft(
                         newSpikeSource[2],
-                        newSpikeSource[3] == null ? tick : tick % newSpikeSource[3],
+                        newSpikeSource[3] == null
+                            ? tick
+                            : tick % newSpikeSource[3],
                         newSpikeSource[3] != null,
                     );
                     currentSpikeSource.period = newSpikeSource[3];
@@ -519,13 +648,17 @@ self.onmessage = event => {
                     mu: synapse[5] === 0 ? null : Math.exp(-1.0 / synapse[5]),
                     spikes: [],
                     current: 0.0,
+                    currentColorLab: [0.5, 0.0, 0.0],
                 }),
                 (currentSynapse, newSynapse) => {
                     currentSynapse.pre = pre(newSynapse[1]);
                     currentSynapse.post = post(newSynapse[2]);
                     currentSynapse.delayMinusOne = newSynapse[3] - 1;
                     currentSynapse.weight = newSynapse[4];
-                    currentSynapse.mu = newSynapse[5] === 0 ? null : Math.exp(-1.0 / newSynapse[5]);
+                    currentSynapse.mu =
+                        newSynapse[5] === 0
+                            ? null
+                            : Math.exp(-1.0 / newSynapse[5]);
                 },
             );
             for (const synapse of synapses) {

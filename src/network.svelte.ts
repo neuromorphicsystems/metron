@@ -1,6 +1,10 @@
 import { parseNoteInput, parseSpikeInput } from "./parsers";
 import type { SimulatorUpdate } from "./simulator";
-import { synth } from "./synth.svelte";
+import {
+    DEFAULT_CHORD_DURATION,
+    DEFAULT_INSTRUMENT,
+    synth,
+} from "./synth.svelte";
 import type { Tool } from "./tool";
 
 export type Node =
@@ -20,6 +24,7 @@ export type SynapsePostDisplay = NeuronDisplay | SpikeSinkChannelDisplay;
 
 export interface SpikeDisplay {
     position: number;
+    color: string;
     synapse: Synapse;
     pre: SynapsePreDisplay;
     post: SynapsePostDisplay;
@@ -28,6 +33,7 @@ export interface SpikeDisplay {
     x: number;
     y: number;
     fill: string;
+    stroke: string;
 }
 
 export const NEURON_RADIUS: number = 20;
@@ -150,6 +156,7 @@ export class NeuronDisplay {
     opacity: number;
     glowRadius: number;
     glowOpacity: number;
+    glowColor: string;
 
     // cache
     stroke: [string, number];
@@ -175,6 +182,7 @@ export class NeuronDisplay {
         this.opacity = 0.0;
         this.glowRadius = 0.0;
         this.glowOpacity = 0.0;
+        this.glowColor = "#808080";
         this.stroke = ["#586e75", 2];
     }
 }
@@ -192,6 +200,8 @@ export class Neuron {
     noteInputContent: string = $state.raw("");
     chordDuration: number = $state.raw(0.0);
     lockPosition: boolean = $state.raw(false);
+    color: string = $state.raw("#808080");
+    updateColorWithSpikes: boolean = $state.raw(false);
     notes: string[] = [];
     display: NeuronDisplay;
 
@@ -206,6 +216,8 @@ export class Neuron {
         instrument: string,
         noteInputContent: string,
         chordDuration: number,
+        color: string,
+        updateColorWithSpikes: boolean,
     ) {
         this.parent = parent;
         this.type = "neuron";
@@ -219,6 +231,8 @@ export class Neuron {
         this.noteInputContent = noteInputContent;
         this.chordDuration = chordDuration;
         this.lockPosition = lockPosition;
+        this.color = color;
+        this.updateColorWithSpikes = updateColorWithSpikes;
         this.notes = parseNoteInput(this.noteInputContent, null);
         this.display = new NeuronDisplay(this, x, y, lockPosition);
     }
@@ -229,7 +243,7 @@ export class SynapseDisplay {
     source: SynapsePreDisplay;
     target: SynapsePostDisplay;
     id: number;
-    spikes: number[];
+    spikes: [number, string][];
 
     constructor(
         parent: Synapse,
@@ -421,6 +435,7 @@ export class SpikeSourceChannelDisplay {
     active: boolean;
     glowRadius: number;
     glowOpacity: number;
+    glowColor: string;
 
     // cache
     stroke: [string, number];
@@ -439,6 +454,7 @@ export class SpikeSourceChannelDisplay {
         this.active = false;
         this.glowRadius = 0.0;
         this.glowOpacity = 0.0;
+        this.glowColor = "#808080";
         this.stroke = ["#586e75", 2];
     }
 }
@@ -451,6 +467,7 @@ export class SpikeSourceChannel {
     instrument: string = $state.raw("None");
     noteInputContent: string = $state.raw("");
     chordDuration: number = $state.raw(0.0);
+    color: string = $state.raw("#808080");
     notes: string[] = [];
     display: SpikeSourceChannelDisplay;
 
@@ -462,6 +479,7 @@ export class SpikeSourceChannel {
         instrument: string,
         noteInputContent: string,
         chordDuration: number,
+        color: string,
     ) {
         this.parent = parent;
         this.type = "source";
@@ -471,6 +489,7 @@ export class SpikeSourceChannel {
         this.noteInputContent = noteInputContent;
         this.notes = parseNoteInput(this.noteInputContent, null);
         this.chordDuration = chordDuration;
+        this.color = color;
         this.display = new SpikeSourceChannelDisplay(this, x, y);
     }
 }
@@ -552,14 +571,15 @@ export class SpikeSource {
     }
 
     addChannels(
-        channelChords: [string, string, number][],
+        channelChordsAndColor: [string, string, number, string][],
         saveAction: boolean,
     ) {
         for (const [
             instrument,
             noteInputContent,
             chordDuration,
-        ] of channelChords) {
+            color,
+        ] of channelChordsAndColor) {
             this.addChannelObject(
                 new SpikeSourceChannel(
                     this,
@@ -569,6 +589,7 @@ export class SpikeSource {
                     instrument,
                     noteInputContent,
                     chordDuration,
+                    color,
                 ),
                 saveAction,
                 false,
@@ -913,6 +934,13 @@ function timeSinceLastSpikeToGlow(
     ];
 }
 
+function rgbF64ToHex(rgbF64: number): string {
+    const r = rgbF64 & 0xff;
+    const g = (rgbF64 & 0xff00) >> 8;
+    const b = (rgbF64 & 0xff0000) >> 16;
+    return `#${r.toString(16).padStart(2, "0")}${g.toString(16).padStart(2, "0")}${b.toString(16).padStart(2, "0")}`;
+}
+
 export class Network {
     neurons: Neuron[];
     synapses: Synapse[];
@@ -1008,6 +1036,8 @@ export class Network {
         instrument: string,
         noteInputContent: string,
         chordDuration: number,
+        color: string,
+        updateColorWithSpikes: boolean,
         saveAction: boolean,
     ) {
         this.addNeuronObject(
@@ -1022,6 +1052,8 @@ export class Network {
                 instrument,
                 noteInputContent,
                 chordDuration,
+                color,
+                updateColorWithSpikes,
             ),
             saveAction,
         );
@@ -1196,7 +1228,7 @@ export class Network {
         style: ContainerStyle,
         period: [boolean, number],
         spikeInputContent: string,
-        channelChords: [string, string, number][],
+        channelChordsAndColor: [string, string, number, string][],
         saveAction: boolean,
     ) {
         const spikeSource = new SpikeSource(
@@ -1208,7 +1240,7 @@ export class Network {
             spikeInputContent,
         );
         this.addSpikeSourceObject(spikeSource, saveAction);
-        spikeSource.addChannels(channelChords, true);
+        spikeSource.addChannels(channelChordsAndColor, true);
     }
 
     addSpikeSourceObject(spikeSource: SpikeSource, saveAction: boolean) {
@@ -1458,8 +1490,13 @@ export class Network {
     }
 
     simulatorData(): {
-        neurons: [number, number, number, boolean][];
-        spikeSources: [number, number[], [number, number][], number | null][];
+        neurons: [number, number, number, boolean, string, boolean][];
+        spikeSources: [
+            number,
+            [number, string][],
+            [number, number][],
+            number | null,
+        ][];
         spikeSinks: [number, number[]][];
         synapses: [number, number, number, number, number, number][];
     } {
@@ -1469,10 +1506,15 @@ export class Network {
                 neuron.tau,
                 neuron.threshold,
                 neuron.subtractOnReset,
+                neuron.color,
+                neuron.updateColorWithSpikes,
             ]),
             spikeSources: this.spikeSources.map(spikeSource => [
                 spikeSource.display.id,
-                spikeSource.channels.map(channel => channel.display.id),
+                spikeSource.channels.map(channel => [
+                    channel.display.id,
+                    channel.color,
+                ]),
                 spikeSource.spikesTimeAndChannel,
                 spikeSource.period[0] ? spikeSource.period[1] : null,
             ]),
@@ -1500,13 +1542,13 @@ export class Network {
             let neuron = this.neurons[localIndex];
             let display = neuron.display;
             for (let index = 0; index < data.neuronCount; ++index) {
-                const id = view.at(index * 3) as number;
+                const id = view.at(index * 5) as number;
                 if (display.id === id) {
-                    const potential = view.at(index * 3 + 1) as number;
+                    const potential = view.at(index * 5 + 1) as number;
                     display.translation =
                         (1.0 - potential) * (NEURON_RADIUS * 2);
                     display.opacity = potential;
-                    const timeSinceLastSpike = view.at(index * 3 + 2) as number;
+                    const timeSinceLastSpike = view.at(index * 5 + 2) as number;
                     if (sound && timeSinceLastSpike === 0) {
                         synth.trigger(
                             neuron.instrument,
@@ -1518,6 +1560,12 @@ export class Network {
                         timeSinceLastSpikeToGlow(timeSinceLastSpike);
                     display.glowRadius = glowRadius;
                     display.glowOpacity = glowOpacity;
+                    display.glowColor = rgbF64ToHex(
+                        view.at(index * 5 + 3) as number,
+                    );
+                    neuron.color = rgbF64ToHex(
+                        view.at(index * 5 + 4) as number,
+                    );
                     ++localIndex;
                     if (localIndex >= this.neurons.length) {
                         break;
@@ -1530,7 +1578,7 @@ export class Network {
         if (this.spikeSources.length > 0) {
             let localSpikeSourceIndex = 0;
             let localSpikeSource = this.spikeSources[localSpikeSourceIndex];
-            let offset = data.neuronCount * 3;
+            let offset = data.neuronCount * 5;
             while (offset < view.length) {
                 const spikeSourceId = view.at(offset) as number;
                 const channelCount = view.at(offset + 1) as number;
@@ -1566,6 +1614,7 @@ export class Network {
                                     );
                                 display.glowRadius = glowRadius;
                                 display.glowOpacity = glowOpacity;
+                                display.glowColor = channel.color;
                             } else {
                                 fallback = true;
                                 break;
@@ -1667,13 +1716,15 @@ export class Network {
         for (const synapse of this.synapses) {
             for (const spike of synapse.display.spikes) {
                 displays.push({
-                    position: spike,
+                    position: spike[0],
+                    color: spike[1],
                     synapse,
                     pre: synapse.pre.display,
                     post: synapse.post.display,
                     x: 0.0,
                     y: 0.0,
                     fill: "none",
+                    stroke: "none",
                 });
             }
         }
@@ -1682,5 +1733,19 @@ export class Network {
 
     reset() {
         this.soundTick = null;
+    }
+
+    lastInstrumentAndChordDuration(): [string, number] {
+        for (let index = this.actions.length; index > 0; --index) {
+            const action = this.actions[index - 1];
+            switch (action[0]) {
+                case "addNeuron":
+                case "addSpikeSourceChannel":
+                    return [action[1].instrument, action[1].chordDuration];
+                default:
+                    break;
+            }
+        }
+        return [DEFAULT_INSTRUMENT, DEFAULT_CHORD_DURATION];
     }
 }

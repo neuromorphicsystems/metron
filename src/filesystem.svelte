@@ -35,6 +35,8 @@ function load(json: string): Network {
             neuron.instrument,
             neuron.notes,
             neuron.chordDuration,
+            neuron.color == null ? "#808080" : neuron.color,
+            neuron.color == null,
             false,
         );
         const neuronObject = newNetwork.neurons[newNetwork.neurons.length - 1];
@@ -55,6 +57,7 @@ function load(json: string): Network {
                 channel.instrument,
                 channel.notes,
                 channel.chordDuration,
+                channel.color,
             ]),
             false,
         );

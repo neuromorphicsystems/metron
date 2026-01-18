@@ -22,8 +22,8 @@ export interface Reset {
 export interface Network {
     type: "network";
     data: {
-        neurons: [number, number, number, boolean][];
-        spikeSources: [number, number[], [number, number][], number | null][];
+        neurons: [number, number, number, boolean, string, boolean][];
+        spikeSources: [number, [number, string][], [number, number][], number | null][];
         spikeSinks: [number, number[]][];
         synapses: [number, number, number, number, number, number][];
     };
@@ -53,8 +53,8 @@ export interface SimulatorUpdate {
     tick: number;
     tickRate: number;
     buffer: ArrayBuffer;
-    sunkSpikes: [number, number, number, number, number, number][];
-    spikes: [number, number[]][];
+    sunkSpikes: [number, number, number, number, number, number, string][];
+    spikes: [number, [number, string][]][];
     neuronCount: number;
 }
 
